@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://howto-site.pages.dev/sitemap.xml
+Sitemap: https://saenghwalnote.pages.dev/sitemap.xml
