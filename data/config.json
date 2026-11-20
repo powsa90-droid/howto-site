@@ -1,0 +1,19 @@
+{
+  "site_name": "생활노트",
+  "domain": "https://howto-site.pages.dev",
+  "description": "이사·청소·자동차·스마트폰·생활 행정까지, 생활 속에서 자주 찾는 방법을 실제 화면과 함께 쉽게 정리하는 정보 사이트입니다.",
+  "lang": "ko",
+  "contact_email": "contact@example.com",
+  "owner": "생활노트 운영자",
+  "categories": [
+    {"slug": "moving", "name": "이사·입주"},
+    {"slug": "cleaning", "name": "청소·살림"},
+    {"slug": "car", "name": "자동차"},
+    {"slug": "phone-it", "name": "스마트폰·IT"},
+    {"slug": "life-admin", "name": "생활 행정"}
+  ],
+  "AD": "",
+  "ADSENSE_CLIENT": "",
+  "HEAD_EXTRA": "",
+  "affiliate_notice": "이 글에는 제휴 링크가 포함되어 있으며, 링크를 통해 신청이 이루어지면 운영자가 일정 수수료를 받을 수 있습니다."
+}
