@@ -6,14 +6,31 @@
   "contact_email": "powsa90@gmail.com",
   "owner": "생활노트 운영자",
   "categories": [
-    {"slug": "moving", "name": "이사·입주"},
-    {"slug": "cleaning", "name": "청소·살림"},
-    {"slug": "car", "name": "자동차"},
-    {"slug": "phone-it", "name": "스마트폰·IT"},
-    {"slug": "life-admin", "name": "생활 행정"}
+    {
+      "slug": "moving",
+      "name": "이사·입주"
+    },
+    {
+      "slug": "cleaning",
+      "name": "청소·살림"
+    },
+    {
+      "slug": "car",
+      "name": "자동차"
+    },
+    {
+      "slug": "phone-it",
+      "name": "스마트폰·IT"
+    },
+    {
+      "slug": "life-admin",
+      "name": "생활 행정"
+    }
   ],
   "AD": "",
   "ADSENSE_CLIENT": "",
   "HEAD_EXTRA": "",
-  "affiliate_notice": "이 글에는 제휴 링크가 포함되어 있으며, 링크를 통해 신청이 이루어지면 운영자가 일정 수수료를 받을 수 있습니다."
+  "affiliate_notice": "이 글에는 제휴 링크가 포함되어 있으며, 링크를 통해 신청이 이루어지면 운영자가 일정 수수료를 받을 수 있습니다.",
+  "privacy_date": "2026년 11월 20일",
+  "static_date": "2026-11-20"
 }
