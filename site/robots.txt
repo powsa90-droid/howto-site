@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /search/
+Disallow: /admin/
+Disallow: /api/
 
 Sitemap: https://saenghwalnote.pages.dev/sitemap.xml
