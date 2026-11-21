@@ -37,7 +37,7 @@ SITE = os.path.join(ROOT, "site")
 KST = timezone(timedelta(hours=9))
 
 MIN_TOTAL, MIN_INTRO, MIN_KW = 1700, 500, 4
-RESERVED = {"images", "about", "contact", "privacy", "assets", "search"}
+RESERVED = {"images", "about", "contact", "privacy", "assets", "search", "admin"}
 
 cfg = json.load(open(os.path.join(DATA, "config.json"), encoding="utf-8"))
 DOMAIN = cfg["domain"].rstrip("/")
@@ -160,6 +160,7 @@ var d=new Date(),w='일월화수목금토'[d.getDay()];
 var el=document.getElementById('today');if(el)el.textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+w+')';
 var b=document.getElementById('themeBtn');if(b)b.onclick=function(){{var r=document.documentElement,n=r.dataset.theme==='dark'?'light':'dark';r.dataset.theme=n;try{{localStorage.setItem('theme',n)}}catch(e){{}}}};
 var m=document.getElementById('menuBtn');if(m)m.onclick=function(){{document.getElementById('nav').classList.toggle('open')}};
+try{{var hit=JSON.stringify({{p:location.pathname,r:document.referrer}});if(!(navigator.sendBeacon&&navigator.sendBeacon('/api/hit',hit)))fetch('/api/hit',{{method:'POST',body:hit,keepalive:true}});}}catch(e){{}}
 }})();
 </script>
 </body></html>
@@ -432,7 +433,8 @@ def static_pages():
         "## 1. 수집하는 정보",
         "사이트는 회원가입이나 댓글 기능이 없으며, 이용자가 직접 입력하는 개인정보를 수집하지 않습니다. 다만 이용자가 이메일로 문의하는 경우 답변을 위해 이메일 주소와 문의 내용을 받게 되며, 답변 완료 후 지체 없이 삭제합니다.",
         "## 2. 자동으로 수집되는 정보와 쿠키",
-        "사이트 이용 과정에서 접속 기록, 브라우저 종류, 방문 페이지 같은 정보가 서버와 통계 도구에 의해 자동으로 기록될 수 있습니다. 이 정보는 개인을 식별하지 않는 형태로 사이트 개선과 방문 통계에만 사용합니다. 화면 밝기(다크 모드) 설정은 이용자의 브라우저에만 저장됩니다. 이용자는 브라우저 설정에서 쿠키 저장을 거부하거나 삭제할 수 있습니다.",
+        "사이트는 방문 통계를 위해 방문한 페이지 주소, 이전 페이지 주소(유입 경로와 검색어), 기기 종류(PC·모바일), 접속 국가, 방문 시각을 자체적으로 기록합니다. IP 주소는 저장하지 않으며, 같은 날 중복 방문을 구분하기 위해 IP 주소와 브라우저 정보를 날마다 바뀌는 방식으로 되돌릴 수 없게 변환한 값만 저장합니다. 이 정보로는 개인을 알아볼 수 없으며 방문 통계와 사이트 개선에만 사용합니다.",
+        "화면 밝기(다크 모드) 설정은 이용자의 브라우저에만 저장됩니다. 이용자는 브라우저 설정에서 쿠키 저장을 거부하거나 삭제할 수 있습니다.",
         "## 3. 광고(Google AdSense)",
         "사이트는 Google AdSense 광고를 게재할 수 있습니다. Google을 포함한 제3자 광고 업체는 쿠키를 사용해 이용자가 이 사이트나 다른 사이트를 방문한 기록을 바탕으로 광고를 보여 줄 수 있습니다. Google의 광고 쿠키 사용 방식은 "
         '<a href="https://policies.google.com/technologies/ads" rel="noopener" target="_blank">Google 광고 정책</a>에서 확인할 수 있으며, '
@@ -470,7 +472,7 @@ def feeds(posts):
 <description>{esc(cfg['description'])}</description><language>ko</language>
 {items}</channel></rss>
 """)
-    write("robots.txt", f"User-agent: *\nAllow: /\nDisallow: /search/\n\nSitemap: {DOMAIN}/sitemap.xml\n")
+    write("robots.txt", f"User-agent: *\nAllow: /\nDisallow: /search/\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: {DOMAIN}/sitemap.xml\n")
     client = cfg.get("ADSENSE_CLIENT", "")
     ads_path = os.path.join(SITE, "ads.txt")
     if client:
