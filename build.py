@@ -37,7 +37,7 @@ SITE = os.path.join(ROOT, "site")
 KST = timezone(timedelta(hours=9))
 
 MIN_TOTAL, MIN_INTRO, MIN_KW = 1700, 500, 4
-RESERVED = {"images", "about", "contact", "privacy", "assets", "search", "admin"}
+RESERVED = {"images", "about", "contact", "privacy", "terms", "assets", "search", "admin"}
 
 cfg = json.load(open(os.path.join(DATA, "config.json"), encoding="utf-8"))
 DOMAIN = cfg["domain"].rstrip("/")
@@ -46,6 +46,7 @@ CATS = {c["slug"]: c["name"] for c in cfg["categories"]}
 ICONS = {"moving": "📦", "cleaning": "🧽", "car": "🚗", "phone-it": "📱", "life-admin": "🏛️"}
 esc = lambda s: html.escape(str(s or ""), quote=True)
 POSTS = []          # load_posts() 후 채움 (사이드바·티커에서 사용)
+ACTIVE = {}         # 글이 1개 이상 있는 카테고리만 (메뉴·사이드바·사이트맵에 노출)
 BUILD_V = datetime.now(KST).strftime("%Y%m%d%H%M")
 
 
@@ -93,7 +94,7 @@ def head(title, desc, canonical, og_image=None, og_type="website", jsonld=None, 
         ads = (f'<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={esc(cfg["ADSENSE_CLIENT"])}" '
                'crossorigin="anonymous"></script>')
     ld = f'<script type="application/ld+json">{json.dumps(jsonld, ensure_ascii=False)}</script>' if jsonld else ""
-    nav = "".join(f'<a href="/{s}/"{" class=on" if s == active else ""}>{esc(n)}</a>' for s, n in CATS.items())
+    nav = "".join(f'<a href="/{s}/"{" class=on" if s == active else ""}>{esc(n)}</a>' for s, n in ACTIVE.items())
     ticker = "".join(f'<a href="/{p["slug"]}/"><b>{kdate(p["date"])}</b> {esc(p["title"])}</a>' for p in POSTS[:8])
     ticker_html = (f'<div class="ticker"><div class="wrap ticker-in"><span class="ticker-tag"><i></i>최신 글</span>'
                    f'<div class="ticker-track"><div class="ticker-move">{ticker}{ticker}</div></div></div></div>') if POSTS else ""
@@ -144,13 +145,13 @@ def head(title, desc, canonical, og_image=None, og_type="website", jsonld=None, 
 
 def foot():
     year = datetime.now(KST).year
-    cats = "".join(f'<li><a href="/{s}/">{ICONS.get(s,"")} {esc(n)}</a></li>' for s, n in CATS.items())
+    cats = "".join(f'<li><a href="/{s}/">{ICONS.get(s,"")} {esc(n)}</a></li>' for s, n in ACTIVE.items()) or '<li>곧 첫 글이 올라옵니다</li>'
     return f"""</main>
 <footer class="footer"><div class="wrap footer-grid">
 <div><a class="logo" href="/"><span class="logo-mark">생</span>{esc(NAME)}</a>
 <p>{esc(cfg['description'])}</p></div>
 <div><h4>카테고리</h4><ul>{cats}</ul></div>
-<div><h4>사이트 안내</h4><ul><li><a href="/about/">소개</a></li><li><a href="/contact/">문의</a></li><li><a href="/privacy/">개인정보처리방침</a></li><li><a href="/rss.xml">RSS</a></li></ul></div>
+<div><h4>사이트 안내</h4><ul><li><a href="/about/">소개</a></li><li><a href="/contact/">문의</a></li><li><a href="/privacy/">개인정보처리방침</a></li><li><a href="/terms/">이용약관</a></li><li><a href="/rss.xml">RSS</a></li></ul></div>
 </div>
 <div class="wrap copy">© {year} {esc(NAME)}. 글의 내용은 공식 안내를 바탕으로 작성되며, 실제 내용은 각 기관·업체 사정에 따라 바뀔 수 있습니다.</div>
 </footer>
@@ -177,7 +178,7 @@ def sidebar():
     recent = "".join(
         f'<li><a href="/{p["slug"]}/"><img src="{img_src(p,1)}" alt="{esc(p["kw"])}" loading="lazy">'
         f'<span><strong>{esc(p["title"])}</strong><small>{kdate(p["date"])}</small></span></a></li>' for p in POSTS[:5])
-    cats = "".join(f'<li><a href="/{s}/"><span>{ICONS.get(s,"")} {esc(n)}</span><em>{counts[s]}</em></a></li>' for s, n in CATS.items())
+    cats = "".join(f'<li><a href="/{s}/"><span>{ICONS.get(s,"")} {esc(n)}</span><em>{counts[s]}</em></a></li>' for s, n in ACTIVE.items())
     return f"""<aside class="sidebar">
 <section class="widget author">
 <div class="author-top"><span class="avatar">생</span><div><strong>{esc(NAME)}</strong><small>생활 정보 정리 노트</small></div></div>
@@ -189,7 +190,7 @@ def sidebar():
 <form class="side-search" action="/search/" method="get"><input name="q" type="search" placeholder="찾는 방법을 입력하세요" aria-label="검색어"><button type="submit" aria-label="검색">{ICON_SEARCH}</button></form>
 </section>
 {f'<section class="widget"><h3>{SPARK}최근 글</h3><ul class="recent">{recent}</ul></section>' if recent else ''}
-<section class="widget"><h3>{SPARK}카테고리</h3><ul class="cat-list">{cats}</ul></section>
+{f'<section class="widget"><h3>{SPARK}카테고리</h3><ul class="cat-list">{cats}</ul></section>' if cats else ''}
 {ad_slot(" side-ad")}
 </aside>"""
 
@@ -233,6 +234,17 @@ def link_card(p):
 <span class="lc-go">바로가기 →</span></a>"""
 
 
+def used_images(p):
+    nums = set()
+    for item in p["body"]:
+        if item == "IMG1": nums.add(1)
+        elif item.startswith("IMG:"): nums.add(int(item[4:]))
+        elif item.startswith("G:"): nums.update(int(x) for x in item[2:].split(","))
+        elif re.fullmatch(r"G[1-5]", item):
+            g = int(item[1]); nums.update(range(2 + (g - 1) * 3, 5 + (g - 1) * 3))
+    return sorted(nums)
+
+
 def render_body(p):
     out, intro_text, all_text, seen_h2 = [], [], [], False
     for item in p["body"]:
@@ -247,6 +259,11 @@ def render_body(p):
                 intro_text.append(t)
         elif item in ("AD1", "AD2", "AD3"):
             out.append(ad_slot())
+        elif item.startswith("IMG:"):
+            out.append(figure(p, int(item[4:])))
+        elif item.startswith("G:"):
+            nums = [int(x) for x in item[2:].split(",")]
+            out.append(f'<div class="grid g{len(nums)}">' + "".join(figure(p, n) for n in nums) + "</div>")
         elif re.fullmatch(r"G[1-5]", item):
             g = int(item[1]); start = 2 + (g - 1) * 3
             out.append('<div class="grid">' + "".join(figure(p, n) for n in range(start, start + 3)) + "</div>")
@@ -304,8 +321,8 @@ def hero(posts):
 
 def cat_chips(active=""):
     chips = f'<a href="/"{" class=on" if not active else ""}>전체</a>' + "".join(
-        f'<a href="/{s}/"{" class=on" if s == active else ""}>{ICONS.get(s,"")} {esc(n)}</a>' for s, n in CATS.items())
-    return f'<div class="chips">{chips}</div>'
+        f'<a href="/{s}/"{" class=on" if s == active else ""}>{ICONS.get(s,"")} {esc(n)}</a>' for s, n in ACTIVE.items())
+    return f'<div class="chips">{chips}</div>' if len(ACTIVE) > 1 else ''
 
 
 # ---------------------------------------------------------------- 페이지
@@ -368,7 +385,10 @@ def cat_page(slug, name, items):
     url = f"{DOMAIN}/{slug}/"
     desc = f"{name} 관련 방법을 공식 안내와 실제 화면으로 정리한 글 모음입니다."
     cards = "".join(card(p) for p in items) or '<p class="empty box">이 카테고리의 첫 글을 준비하고 있습니다.</p>'
-    write(f"{slug}/index.html", head(f"{name} | {NAME}", desc, url, active=slug) + f"""
+    hd = head(f"{name} | {NAME}", desc, url, active=slug)
+    if not items:
+        hd = hd.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta name="robots" content="noindex">', 1)
+    write(f"{slug}/index.html", hd + f"""
 <section class="cat-hero box"><span class="cat-icon">{ICONS.get(slug,'')}</span><div><h1>{esc(name)}</h1><p>{esc(desc)} 지금까지 {len(items)}개의 글이 있습니다.</p></div></section>
 <div class="layout">
 <div class="content">
@@ -448,6 +468,22 @@ def static_pages():
         "## 7. 시행일",
         f"이 방침은 {today}부터 적용됩니다. 내용이 바뀌면 이 페이지에 알립니다.",
     ])
+    static_page("terms", "이용약관", [
+        f"이 약관은 {n}(이하 '사이트')이 제공하는 정보와 서비스를 이용하는 데 필요한 기본 사항을 정합니다. 사이트를 이용하시면 이 약관에 동의한 것으로 봅니다.",
+        "## 1. 제공하는 정보",
+        "사이트는 이사·입주, 생활 행정 등 일상에서 필요한 방법을 공식 안내와 실제 이용 화면을 바탕으로 정리해 제공합니다. 별도의 회원가입 없이 누구나 글을 볼 수 있습니다.",
+        "## 2. 정보의 정확성",
+        "사이트는 글을 작성할 때 관련 기관과 업체의 공식 안내를 확인하지만, 제도와 서비스는 수시로 바뀔 수 있습니다. 중요한 결정이나 신청 전에는 반드시 해당 기관의 최신 안내를 함께 확인해 주세요. 사이트의 정보를 이용해 생긴 결과에 대해 사이트는 법적 책임을 지지 않습니다.",
+        "## 3. 저작권",
+        "사이트에 실린 글과 직접 만든 이미지의 저작권은 사이트 운영자에게 있습니다. 출처를 밝힌 간단한 인용과 링크 공유는 환영하지만, 글 전체를 복사해 다른 곳에 게시하는 것은 허용하지 않습니다. 글에 포함된 각 기관·업체의 화면은 이용 방법을 안내하기 위한 목적으로만 사용합니다.",
+        "## 4. 외부 링크와 광고",
+        "사이트에는 공식 사이트 등 외부 사이트로 연결되는 링크와 광고가 포함될 수 있습니다. 외부 사이트의 내용과 거래에 대해서는 해당 사이트의 약관과 정책이 적용됩니다. 일부 글에는 제휴 링크가 포함될 수 있으며, 이 경우 글에 따로 표시합니다.",
+        "## 5. 금지 행위",
+        "사이트의 정상적인 운영을 방해하는 행위, 자동화된 방법으로 글을 대량 수집하는 행위, 다른 사람의 권리를 침해하는 행위는 허용하지 않습니다.",
+        "## 6. 약관의 변경과 문의",
+        f'약관이 바뀌면 이 페이지에 알립니다. 약관에 관한 문의는 <a href="mailto:{mail}">{mail}</a>로 보내 주세요.',
+        f"이 약관은 {today}부터 적용됩니다.",
+    ])
     write("404.html", head(f"페이지를 찾을 수 없습니다 | {NAME}", "요청한 페이지가 없습니다.", DOMAIN + "/404.html") +
           '<section class="box notfound"><h1>404</h1><p>요청하신 페이지를 찾을 수 없습니다.</p><a class="btn" href="/">홈으로 돌아가기</a></section>' + foot())
 
@@ -455,9 +491,9 @@ def static_pages():
 def feeds(posts):
     now = datetime.now(KST).strftime("%Y-%m-%d")
     last = posts[0]["date"] if posts else now
-    urls = [(f"{DOMAIN}/", last)] + [(f"{DOMAIN}/{s}/", last) for s in CATS] + \
+    urls = [(f"{DOMAIN}/", last)] + [(f"{DOMAIN}/{s}/", last) for s in ACTIVE] + \
            [(f"{DOMAIN}/{p['slug']}/", p.get("updated", p["date"])) for p in posts] + \
-           [(f"{DOMAIN}/{s}/", cfg.get("static_date", now)) for s in ("about", "contact", "privacy")]
+           [(f"{DOMAIN}/{s}/", cfg.get("static_date", now)) for s in ("about", "contact", "privacy", "terms")]
     sm = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + \
          "".join(f"<url><loc>{u}</loc><lastmod>{d}</lastmod></url>\n" for u, d in urls) + "</urlset>\n"
     write("sitemap.xml", sm)
@@ -509,14 +545,16 @@ def main():
     global POSTS
     os.makedirs(SITE, exist_ok=True)
     posts = POSTS = load_posts()
+    ACTIVE.update({s: n for s, n in CATS.items() if any(p["category"] == s for p in posts)})
     fails = 0
     for p in posts:
         s = post_page(p, posts)
-        missing = [n for n in range(1, 17) if not os.path.exists(os.path.join(SITE, img_src(p, n).lstrip("/")))]
-        ok = s["total"] >= MIN_TOTAL and s["intro"] >= MIN_INTRO and s["kw"] >= MIN_KW
+        missing = [n for n in used_images(p) if not os.path.exists(os.path.join(SITE, img_src(p, n).lstrip("/")))]
+        ok = s["total"] >= MIN_TOTAL and not missing
+        warn = [] if s["intro"] >= MIN_INTRO else ["서론 짧음"]
         fails += (not ok)
-        print(f"{p['slug']} total {s['total']} intro {s['intro']} kw_in_intro {s['kw']}"
-              + ("" if ok else "  FAIL") + (f"  이미지 없음 {missing}" if missing else ""))
+        print(f"{p['slug']} total {s['total']} intro {s['intro']} kw_in_intro {s['kw']} imgs {len(used_images(p))}"
+              + ("" if ok else "  FAIL") + (f"  이미지 없음 {missing}" if missing else "") + (f"  ({', '.join(warn)})" if warn else ""))
     home_page(posts)
     for slug, name in CATS.items():
         cat_page(slug, name, [p for p in posts if p["category"] == slug])
