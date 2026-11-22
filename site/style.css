@@ -74,7 +74,7 @@ button{font:inherit;cursor:pointer}
 .hero-over h2{font-size:30px;line-height:1.3;margin:12px 0 10px;letter-spacing:-.03em}
 .hero-over p{margin:0 0 14px;opacity:.9;font-size:15.5px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .hero-solo .hero-main{grid-template-columns:1fr 280px}
-.hero-list{display:grid;gap:14px}
+.hero-list{display:grid;gap:14px;align-content:start}
 .hero-side{display:flex;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;box-shadow:var(--shadow)}
 .hero-side img{width:88px;height:88px;border-radius:var(--r-sm);object-fit:cover;flex:none;border:1px solid var(--line)}
 .hero-side small{color:var(--brand);font-weight:700;font-size:12px}
@@ -168,6 +168,10 @@ figure{margin:0 0 22px}
 figcaption{font-size:13px;color:var(--muted);text-align:center;margin-top:6px;line-height:1.4}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 24px}
 .grid figure{margin:0}
+.grid.g2{grid-template-columns:repeat(2,1fr)}
+.grid.g2 img,.grid.g1 img{aspect-ratio:auto;object-fit:contain;background:#fff}
+.grid.g1{grid-template-columns:1fr}
+.post-body>figure:not(.hero-img) img{border:1px solid var(--line);border-radius:12px;margin:0 auto}
 .grid img{width:100%;aspect-ratio:4/3;object-fit:cover;border:1px solid var(--line);border-radius:10px}
 .link-card{display:block;border:1px solid var(--line);border-left:5px solid var(--brand);border-radius:14px;padding:18px 20px;margin:0 0 26px;background:var(--surface2);text-decoration:none!important;color:var(--text)!important}
 .link-card:hover{border-color:var(--brand)}
