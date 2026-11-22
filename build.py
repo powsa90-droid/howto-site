@@ -51,7 +51,9 @@ BUILD_V = datetime.now(KST).strftime("%Y%m%d%H%M")
 
 
 def inline(s):
-    return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", esc(s))
+    t = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", esc(s))
+    # 사이트 안 다른 글 링크: [글자](/slug/)
+    return re.sub(r"\[([^\]]+)\]\((/[a-z0-9\-/]*)\)", r'<a href="\2">\1</a>', t)
 
 
 def nospace_len(s):
