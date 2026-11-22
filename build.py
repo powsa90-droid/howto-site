@@ -28,7 +28,7 @@ data/config.json + data/posts/*.json  ->  site/ (정적 HTML 전체)
 }
 H2 이전이 서론으로 계산된다. 기준: 전체 1,700자 / 서론 500자(띄어쓰기 제외), 서론 키워드 4회.
 """
-import csv, glob, html, json, os, re, shutil
+import csv, glob, hashlib, html, json, os, re, shutil
 from datetime import datetime, timezone, timedelta
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -65,8 +65,14 @@ def write(path, text):
         f.write(text)
 
 
+_VER = {}
 def img_src(p, n):
-    return f"/images/{p['slug']}/{n:02d}.jpg"
+    """이미지 주소에 내용 기반 버전(?v=)을 붙여, 이미지를 바꾸면 브라우저 캐시를 무시하고 새로 받게 한다."""
+    path = f"/images/{p['slug']}/{n:02d}.jpg"
+    if path not in _VER:
+        full = os.path.join(SITE, path.lstrip("/"))
+        _VER[path] = hashlib.md5(open(full, "rb").read()).hexdigest()[:8] if os.path.exists(full) else ""
+    return path + (f"?v={_VER[path]}" if _VER[path] else "")
 
 
 def read_min(p):
@@ -549,7 +555,7 @@ def main():
     fails = 0
     for p in posts:
         s = post_page(p, posts)
-        missing = [n for n in used_images(p) if not os.path.exists(os.path.join(SITE, img_src(p, n).lstrip("/")))]
+        missing = [n for n in used_images(p) if not os.path.exists(os.path.join(SITE, img_src(p, n).split("?")[0].lstrip("/")))]
         ok = s["total"] >= MIN_TOTAL and not missing
         warn = [] if s["intro"] >= MIN_INTRO else ["서론 짧음"]
         fails += (not ok)
