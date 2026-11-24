@@ -508,11 +508,18 @@ def feeds(posts):
 
     def rfc822(d):
         return datetime.strptime(d, "%Y-%m-%d").replace(hour=9, tzinfo=KST).strftime("%a, %d %b %Y %H:%M:%S +0900")
+    def rss_img(slug):
+        # 핀터레스트 RSS 자동 핀용 대표 이미지 (없으면 빈 문자열)
+        f = os.path.join(SITE, "images", slug, "01.jpg")
+        if not os.path.exists(f):
+            return ""
+        u = f"{DOMAIN}/images/{slug}/01.jpg"
+        return f'<enclosure url="{u}" length="{os.path.getsize(f)}" type="image/jpeg"/><media:content url="{u}" medium="image" type="image/jpeg"/>'
     items = "".join(f"""<item><title>{esc(p['title'])}</title><link>{DOMAIN}/{p['slug']}/</link>
-<guid>{DOMAIN}/{p['slug']}/</guid><pubDate>{rfc822(p['date'])}</pubDate><description>{esc(p['desc'])}</description></item>
+<guid>{DOMAIN}/{p['slug']}/</guid><pubDate>{rfc822(p['date'])}</pubDate><description>{esc(p['desc'])}</description>{rss_img(p['slug'])}</item>
 """ for p in posts[:20])
     write("rss.xml", f"""<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0"><channel><title>{esc(NAME)}</title><link>{DOMAIN}/</link>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>{esc(NAME)}</title><link>{DOMAIN}/</link>
 <description>{esc(cfg['description'])}</description><language>ko</language>
 {items}</channel></rss>
 """)
