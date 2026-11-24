@@ -42,6 +42,7 @@ RESERVED = {"images", "about", "contact", "privacy", "terms", "assets", "search"
 cfg = json.load(open(os.path.join(DATA, "config.json"), encoding="utf-8"))
 DOMAIN = cfg["domain"].rstrip("/")
 NAME = cfg["site_name"]
+OWNER = cfg.get("owner") or NAME
 CATS = {c["slug"]: c["name"] for c in cfg["categories"]}
 ICONS = {"moving": "📦", "cleaning": "🧽", "car": "🚗", "phone-it": "📱", "life-admin": "🏛️"}
 esc = lambda s: html.escape(str(s or ""), quote=True)
@@ -181,7 +182,7 @@ def ad_slot(extra=""):
 
 
 # ---------------------------------------------------------------- 사이드바
-def sidebar():
+def sidebar(recent_list=True):
     counts = {s: sum(1 for p in POSTS if p["category"] == s) for s in CATS}
     recent = "".join(
         f'<li><a href="/{p["slug"]}/"><img src="{img_src(p,1)}" alt="{esc(p["kw"])}" loading="lazy">'
@@ -189,15 +190,16 @@ def sidebar():
     cats = "".join(f'<li><a href="/{s}/"><span>{ICONS.get(s,"")} {esc(n)}</span><em>{counts[s]}</em></a></li>' for s, n in ACTIVE.items())
     return f"""<aside class="sidebar">
 <section class="widget author">
-<div class="author-top"><span class="avatar">생</span><div><strong>{esc(NAME)}</strong><small>생활 정보 정리 노트</small></div></div>
-<p>안녕하세요, {esc(NAME)}입니다. 이사·청소·자동차·스마트폰·생활 행정까지 막상 하려면 헷갈리는 일들을 공식 안내와 실제 화면으로 차근차근 정리합니다.</p>
+<div class="author-top"><span class="avatar">생</span><div><strong>{esc(OWNER)}</strong><small>{esc(NAME)} 운영자</small></div></div>
+<p>안녕하세요, {esc(NAME)}를 운영하는 {esc(OWNER)}입니다. 일상생활에서 필요한 여러 정보를 직접 알아보고, 공식 안내와 실제 화면으로 차근차근 정리해 전해 드립니다.</p>
+<a class="more-link" href="/about/">운영자 소개 보기 →</a>
 <ul class="promise"><li><span>✔</span>공식 사이트에서 직접 확인한 내용</li><li><span>✔</span>단계별 실제 화면 캡처</li><li><span>✔</span>바뀐 정보는 빠르게 수정</li></ul>
 <a class="btn" href="/contact/">문의하기</a>
 </section>
 <section class="widget"><h3>{SPARK}검색</h3>
 <form class="side-search" action="/search/" method="get"><input name="q" type="search" placeholder="찾는 방법을 입력하세요" aria-label="검색어"><button type="submit" aria-label="검색">{ICON_SEARCH}</button></form>
 </section>
-{f'<section class="widget"><h3>{SPARK}최근 글</h3><ul class="recent">{recent}</ul></section>' if recent else ''}
+{f'<section class="widget"><h3>{SPARK}최근 글</h3><ul class="recent">{recent}</ul></section>' if recent and recent_list else ''}
 {f'<section class="widget"><h3>{SPARK}카테고리</h3><ul class="cat-list">{cats}</ul></section>' if cats else ''}
 {ad_slot(" side-ad")}
 </aside>"""
@@ -227,7 +229,8 @@ def caption(p, n):
 
 def figure(p, n, cls=""):
     cap = caption(p, n)
-    return (f'<figure class="{cls}"><img src="{img_src(p, n)}" alt="{esc(p["kw"])}" loading="lazy" decoding="async">'
+    alt = cap or p["kw"]
+    return (f'<figure class="{cls}"><img src="{img_src(p, n)}" alt="{esc(alt)}" loading="lazy" decoding="async">'
             + (f"<figcaption>{esc(cap)}</figcaption>" if cap else "") + "</figure>")
 
 
@@ -341,7 +344,21 @@ def post_page(p, posts):
     ld = {"@context": "https://schema.org", "@type": "Article", "headline": p["title"],
           "description": p["desc"], "datePublished": p["date"], "dateModified": p.get("updated", p["date"]),
           "image": [DOMAIN + img_src(p, 1)], "mainEntityOfPage": url,
-          "author": {"@type": "Organization", "name": NAME}, "publisher": {"@type": "Organization", "name": NAME}}
+          "author": {"@type": "Person", "name": OWNER, "url": f"{DOMAIN}/about/"}, "publisher": {"@type": "Organization", "name": NAME}}
+    lds = [ld]
+    faq_html = ""
+    if p.get("faq"):
+        faq_html = ('<section class="faq"><h2 class="faq-h">자주 묻는 질문</h2>' + "".join(
+            f"<details><summary>{esc(q)}</summary><p>{inline(a)}</p></details>" for q, a in p["faq"]) + "</section>")
+        lds.append({"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [
+            {"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", a).replace("**", "")}}
+            for q, a in p["faq"]]})
+    checked = ""
+    if p.get("checked"):
+        srcs = "".join(f'<li><a href="{esc(u)}" rel="nofollow noopener" target="_blank">{esc(n)}</a></li>' for n, u in p.get("sources", []))
+        checked = (f'<div class="checked"><p>이 글의 절차와 기한·수수료는 <strong>{kdate(p["checked"])}</strong>에 공식 사이트에서 직접 확인했습니다. '
+                   f'제도와 화면은 바뀔 수 있으니 신청 전에 공식 안내를 한 번 더 확인해 주세요.</p>'
+                   + (f'<ul>{srcs}</ul>' if srcs else '') + '</div>')
     crumb = {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
         {"@type": "ListItem", "position": 1, "name": "홈", "item": DOMAIN + "/"},
         {"@type": "ListItem", "position": 2, "name": CATS[p["category"]], "item": f"{DOMAIN}/{p['category']}/"},
@@ -352,18 +369,20 @@ def post_page(p, posts):
         rel_html = '<section class="related"><h3>' + SPARK + '함께 보면 좋은 글</h3><div class="rel-grid">' + "".join(
             f'<a href="/{q["slug"]}/"><img src="{img_src(q,1)}" alt="{esc(q["kw"])}" loading="lazy"><strong>{esc(q["title"])}</strong></a>'
             for q in related) + "</div></section>"
-    html_ = head(p["title"], p["desc"], url, DOMAIN + img_src(p, 1), "article", [ld, crumb], p["category"]) + f"""
+    html_ = head(p["title"], p["desc"], url, DOMAIN + img_src(p, 1), "article", lds + [crumb], p["category"]) + f"""
 <div class="layout">
 <div class="content">
 <article class="post box">
 <nav class="crumb"><a href="/">홈</a><span>›</span><a href="/{p['category']}/">{esc(CATS[p['category']])}</a></nav>
 {badge(p)}
 <h1>{esc(p['title'])}</h1>
-<div class="meta post-meta"><span class="by"><span class="avatar sm">생</span>{esc(NAME)}</span><span class="m-dot"></span>{meta_line(p)}</div>
+<div class="meta post-meta"><a class="by" href="/about/"><span class="avatar sm">생</span>{esc(OWNER)}</a><span class="m-dot"></span>{meta_line(p)}</div>
 {notice}
 <div class="post-body">
 {body}
 </div>
+{checked}
+{faq_html}
 </article>
 {rel_html}
 </div>
@@ -371,6 +390,8 @@ def post_page(p, posts):
 </div>
 """ + foot()
     write(f"{p['slug']}/index.html", html_)
+    stats["faq"] = len(p.get("faq", []))
+    stats["links"] = len(re.findall(r"\]\(/[a-z0-9-]+/\)", " ".join(p["body"])))
     return stats
 
 
@@ -378,13 +399,13 @@ def home_page(posts):
     latest = posts[:20]
     cards = "".join(card(p) for p in latest) or '<p class="empty box">곧 첫 글이 올라옵니다. 조금만 기다려 주세요!</p>'
     write("index.html", head(NAME, cfg["description"], f"{DOMAIN}/") + f"""
-{hero(posts)}
+{hero(posts) if len(posts) >= 10 else ''}
 <div class="layout">
 <div class="content">
 <div class="sec-head"><h2>{SPARK}최신 글</h2>{cat_chips()}</div>
 <div class="cards">{cards}</div>
 </div>
-{sidebar()}
+{sidebar(recent_list=False)}
 </div>
 """ + foot())
 
@@ -445,9 +466,15 @@ return '<article class="card"><a class="card-img" href="'+p.u+'"><img src="'+p.i
 def static_pages():
     mail = esc(cfg["contact_email"]); n = esc(NAME)
     static_page("about", "소개", [
-        f"{n}은 일상에서 자주 검색하지만 막상 찾으면 설명이 흩어져 있는 생활 정보를 한곳에 모아 정리하는 사이트입니다. 이사와 입주 준비, 청소와 살림, 자동차 관리, 스마트폰과 각종 앱 설정, 전입신고 같은 생활 행정까지 실제로 따라 할 수 있도록 순서대로 안내합니다.",
-        "모든 글은 해당 기관이나 업체의 공식 홈페이지와 공식 도움말을 직접 확인한 뒤 작성합니다. 이용 화면을 단계별로 캡처해 함께 싣기 때문에 처음 해 보는 분도 화면을 보면서 그대로 진행할 수 있습니다.",
-        "제도나 서비스 내용은 수시로 바뀔 수 있습니다. 글에 적힌 내용과 실제 화면이 다르다면 공식 사이트의 최신 안내를 따라 주시고, 문의 페이지로 알려 주시면 확인 후 바로 고치겠습니다.",
+        f"{n}은 일상에서 자주 검색하지만 막상 찾으면 설명이 흩어져 있는 생활 정보를 한곳에 모아 정리하는 사이트입니다. 지금은 이사와 입주 준비, 전입신고와 확정일자 같은 생활 행정을 중심으로, 처음 해 보는 분도 화면을 보면서 그대로 따라 할 수 있도록 순서대로 안내하고 있습니다.",
+        "## 운영자 소개",
+        f"안녕하세요, {n}를 운영하는 {esc(OWNER)}입니다. 일상생활 속에서 한 번쯤 꼭 필요해지는 여러 가지 정보들을 직접 알아보고, 보기 쉽게 잘 정리해서 여러분께 전해 드리고 싶어 이 사이트를 운영하고 있습니다. 막상 하려고 하면 어디서부터 시작해야 할지 막막한 일들이 많은데, 그럴 때 이 글 하나만 보고 끝까지 따라 할 수 있도록 쓰는 것이 목표입니다.",
+        "## 글을 쓰는 원칙",
+        "첫째, 모든 글은 해당 기관이나 업체의 공식 홈페이지와 공식 도움말을 직접 확인한 뒤 작성합니다. 다른 사람의 블로그 글을 옮기지 않으며, 기한·수수료·법 규정처럼 중요한 숫자는 공식 안내에 적힌 그대로 씁니다.",
+        "둘째, 이용 화면을 단계별로 직접 캡처해 함께 싣습니다. 어느 메뉴를 눌러야 하는지, 어디서 자주 막히는지를 실제 화면을 따라가며 설명합니다.",
+        "셋째, 글마다 내용을 확인한 날짜를 적고, 제도나 화면이 바뀌면 다시 확인해 고칩니다. 글에 적힌 내용과 실제 화면이 다르다면 공식 사이트의 최신 안내를 따라 주시고, 문의 페이지로 알려 주시면 확인 후 바로 고치겠습니다.",
+        "## 연락처",
+        f'궁금한 점이나 고칠 부분이 있으시면 <a href="mailto:{mail}">{mail}</a>로 보내 주세요. <a href="/contact/">문의 페이지</a>에서도 안내하고 있습니다.',
         "일부 글에는 관련 서비스로 연결되는 제휴 링크가 포함될 수 있으며, 이 경우 글 상단에 따로 표시합니다. 제휴 여부와 관계없이 글의 내용은 공식 안내와 사실을 기준으로 작성합니다.",
     ])
     static_page("contact", "문의", [
@@ -567,8 +594,11 @@ def main():
         missing = [n for n in used_images(p) if not os.path.exists(os.path.join(SITE, img_src(p, n).split("?")[0].lstrip("/")))]
         ok = s["total"] >= MIN_TOTAL and not missing
         warn = [] if s["intro"] >= MIN_INTRO else ["서론 짧음"]
+        if s["faq"] < 5: warn.append(f"FAQ {s['faq']}개(5개 이상 권장)")
+        if s["links"] < 1: warn.append("본문 내부 링크 없음")
+        if not p.get("checked"): warn.append("확인 날짜(checked) 없음")
         fails += (not ok)
-        print(f"{p['slug']} total {s['total']} intro {s['intro']} kw_in_intro {s['kw']} imgs {len(used_images(p))}"
+        print(f"{p['slug']} total {s['total']} intro {s['intro']} kw_in_intro {s['kw']} imgs {len(used_images(p))} faq {s['faq']} inlinks {s['links']}"
               + ("" if ok else "  FAIL") + (f"  이미지 없음 {missing}" if missing else "") + (f"  ({', '.join(warn)})" if warn else ""))
     home_page(posts)
     for slug, name in CATS.items():
